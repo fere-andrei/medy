@@ -283,3 +283,21 @@ To avoid hardcoding a dental-only model (and a rewrite if Medy expands beyond de
 | 5 | SMS provider | **Deferred — pluggable multi-provider adapter** | Architecture already isolates this behind an adapter interface (§3.9); picking SMSLink vs. SendSMS vs. Twilio is a low-risk, late-bindable decision — revisit when the `notification` module is built. |
 
 These are locked for the purposes of starting implementation. Anything not yet decided (e.g. specific commission calculation rules, installment provider selection, exact RBAC permission matrix) will surface as its own focused decision when that module's phase begins, rather than being guessed at up front.
+
+---
+
+## 8. Microservices Path (Learning Track)
+
+A secondary goal of this project is hands-on microservices experience, alongside shipping a usable product. Rather than starting distributed (which front-loads service discovery, network resilience, and distributed-transaction complexity before any product exists), the plan is sequential:
+
+1. **Build the modular monolith first** (this document, §2–§6). Spring Modulith's module boundaries — a clean public API per module, internals hidden — mean a well-built module is already most of the way to being extractable as a standalone service.
+2. **Once the monolith has real substance** (tenancy, auth, and a couple of working domain modules like `patient`/`appointment`), start extracting modules as real, separately-deployed microservices, in this order:
+
+   1. **`notification` (SMS)** — first, because it's already event-driven by design (triggered by `AppointmentCreatedEvent`, etc.), a natural fit for async, message-queue-based inter-service communication instead of a synchronous REST call. No shared-transaction requirement with the rest of the system, and a small, well-bounded surface area (send SMS, track delivery status). Teaches: async messaging between services.
+   2. **ANAF e-Factura / fiscal invoicing** (carved out of `billing`) — second, because it's a different integration shape (OAuth2 against a government API, UBL XML generation, polling for async validation status) and has a genuine real-world reason to be isolated: each tenant's SPV digital-certificate credentials are sensitive, so keeping that in its own service with its own secrets scope reduces blast radius. Already designed with a clean seam (the `FiscalInvoicingProvider` interface, §3.6). Teaches: credential isolation and third-party/government API integration.
+   3. **`reporting`/analytics** — third and most advanced: a separate read-optimized store built by consuming domain events from every other module into denormalized views instead of querying the OLTP schema directly. Teaches: CQRS and eventual consistency.
+
+   (`recall` was considered and deliberately left out — it's structurally too similar to `notification` to teach anything new; it stays in the monolith.)
+3. **Later, optionally**: an API Gateway in front of the monolith + extracted service(s), most likely **Spring Cloud Gateway** (WebFlux-based — this is why `spring-boot-starter-webflux` stays in `pom.xml` even though the monolith itself uses the traditional Servlet stack for request handling).
+
+This keeps the product-delivery goal on the critical path while still giving three real (not toy) microservices exercises, each teaching a different lesson, once there's something worth extracting.
