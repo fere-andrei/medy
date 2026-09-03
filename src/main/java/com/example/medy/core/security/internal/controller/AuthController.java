@@ -1,4 +1,4 @@
-package com.example.medy.core.security.internal.web;
+package com.example.medy.core.security.internal.controller;
 
 import com.example.medy.core.security.internal.entity.User;
 import com.example.medy.core.security.internal.jwt.JwtService;

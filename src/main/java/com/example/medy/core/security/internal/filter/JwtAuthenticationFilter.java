@@ -1,4 +1,4 @@
-package com.example.medy.core.security.internal.web;
+package com.example.medy.core.security.internal.filter;
 
 import com.example.medy.core.security.internal.jwt.JwtPrincipal;
 import com.example.medy.core.security.internal.jwt.JwtService;
