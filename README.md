@@ -29,3 +29,4 @@ This starts Postgres automatically via `compose.yaml` (Spring Boot's Docker Comp
 - Host: `localhost`, Port: `5432`, DB: `medy`, User: `medy`, Password: `secret`
 - Connect via IntelliJ's built-in Database tool, or `docker exec -it medy-postgres-1 psql -U medy -d medy`
 - To run Postgres standalone (without the app): `docker compose up -d`
+- If the app/tests fail with `role "medy" does not exist`, something else (e.g. Postgres.app) is already bound to port 5432 and is intercepting the connection instead of our container — quit it and retry.
