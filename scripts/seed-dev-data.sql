@@ -28,3 +28,16 @@ INSERT INTO patients (
     (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', 'Vasile', 'Georgescu', '1995-07-30', 'MALE',
      '1950730123456', 'vasile.georgescu@example.com', '0755444555', 'Str. Victoriei 8', 'Bucuresti', 'Bucuresti',
      '030002', 'Romania', 'Privat Asig', 'INS-2002', 'Maria Georgescu', '0755444666');
+
+-- Login users. All passwords are "password123" (bcrypt hash below).
+-- Staff: POST /auth/login {"orgSlug": "clinica-sorin", "email": "admin@clinica-sorin.ro", "password": "password123"}
+-- Super admin: POST /auth/login {"email": "root@medy.app", "password": "password123"}
+INSERT INTO users (id, tenant_id, email, password_hash, full_name, role) VALUES
+    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001', 'admin@clinica-sorin.ro',
+     '$2a$10$C/V85marDUGPkctbuk8Ksu7SWO6D8AFUAqmldCLb/ckhQ.Dz278ka', 'Sorin Vasilescu', 'CLINIC_ADMIN'),
+
+    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', 'admin@policlinica-provita.ro',
+     '$2a$10$C/V85marDUGPkctbuk8Ksu7SWO6D8AFUAqmldCLb/ckhQ.Dz278ka', 'Andreea Constantin', 'CLINIC_ADMIN'),
+
+    (gen_random_uuid(), NULL, 'root@medy.app',
+     '$2a$10$C/V85marDUGPkctbuk8Ksu7SWO6D8AFUAqmldCLb/ckhQ.Dz278ka', 'Platform Admin', 'SUPER_ADMIN');
