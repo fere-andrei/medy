@@ -47,4 +47,6 @@ INSERT INTO users (id, tenant_id, email, password_hash, full_name, role) VALUES
 -- toggle one of these rows to enabled=false.
 INSERT INTO tenant_module_entitlements (id, tenant_id, module_code, enabled) VALUES
     (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001', 'PATIENT_MANAGEMENT', true),
-    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', 'PATIENT_MANAGEMENT', true);
+    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', 'PATIENT_MANAGEMENT', true),
+    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001', 'APPOINTMENTS', true),
+    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', 'APPOINTMENTS', true);

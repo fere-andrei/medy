@@ -6,5 +6,6 @@ package com.example.medy.core.licensing.internal.enums;
  * product roadmap.
  */
 public enum ModuleCode {
-    PATIENT_MANAGEMENT
+    PATIENT_MANAGEMENT,
+    APPOINTMENTS
 }
