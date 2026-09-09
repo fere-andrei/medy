@@ -1,5 +1,6 @@
 package com.example.medy.core.security.internal.config;
 
+import com.example.medy.core.security.internal.enums.Role;
 import com.example.medy.core.security.internal.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +40,11 @@ class SecurityConfig {
                         // unauthenticated request — blocking it would clobber every error
                         // body (including this controller's own 401s) with a generic 403.
                         .requestMatchers("/auth/**", "/error").permitAll()
+                        .requestMatchers("/patients/**").hasAnyRole(
+                                Role.CLINIC_ADMIN.name(),
+                                Role.DOCTOR.name(),
+                                Role.RECEPTIONIST.name(),
+                                Role.ASSISTANT.name())
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
