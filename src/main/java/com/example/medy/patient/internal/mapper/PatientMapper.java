@@ -8,6 +8,7 @@ import com.example.medy.patient.internal.entity.Address;
 import com.example.medy.patient.internal.entity.Patient;
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
+import org.mapstruct.MappingTarget;
 
 @Mapper(componentModel = "spring")
 public interface PatientMapper {
@@ -20,4 +21,8 @@ public interface PatientMapper {
     PatientResponseDTO toResponse(Patient patient);
 
     AddressResponseDTO toResponse(Address address);
+
+    /** Updates an existing entity in place — {@code id} is never touched. */
+    @Mapping(target = "id", ignore = true)
+    void updateEntityFromRequest(PatientRequestDTO request, @MappingTarget Patient patient);
 }

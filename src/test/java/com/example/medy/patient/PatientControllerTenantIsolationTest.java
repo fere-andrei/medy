@@ -20,9 +20,12 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -105,6 +108,105 @@ class PatientControllerTenantIsolationTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    @Test
+    void findById_returnsPatient_whenItBelongsToCallersTenant() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+        UUID patientId = createPatient(tokenA, "Ana", "Popescu");
+
+        mockMvc.perform(get("/patients/" + patientId).header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Ana"));
+    }
+
+    @Test
+    void findById_returnsNotFound_whenPatientDoesNotExist() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+
+        mockMvc.perform(get("/patients/" + UUID.randomUUID()).header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void findById_returnsNotFound_whenPatientBelongsToAnotherTenant() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+        String tokenB = login("test-controller-b", "staffB@test.com");
+        UUID patientId = createPatient(tokenA, "Ana", "Popescu");
+
+        mockMvc.perform(get("/patients/" + patientId).header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void update_changesPatientFields() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+        UUID patientId = createPatient(tokenA, "Ana", "Popescu");
+
+        PatientRequestDTO updated = new PatientRequestDTO(
+                "Ana-Maria", "Popescu", LocalDate.of(1990, 1, 1),
+                null, null, null, null, null, null, null, null, null);
+
+        mockMvc.perform(put("/patients/" + patientId)
+                        .header("Authorization", "Bearer " + tokenA)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updated)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.firstName").value("Ana-Maria"));
+    }
+
+    @Test
+    void update_returnsNotFound_whenPatientBelongsToAnotherTenant() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+        String tokenB = login("test-controller-b", "staffB@test.com");
+        UUID patientId = createPatient(tokenA, "Ana", "Popescu");
+
+        PatientRequestDTO updated = new PatientRequestDTO(
+                "Hacked", "Name", LocalDate.of(1990, 1, 1),
+                null, null, null, null, null, null, null, null, null);
+
+        mockMvc.perform(put("/patients/" + patientId)
+                        .header("Authorization", "Bearer " + tokenB)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(updated)))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_removesPatient_andSubsequentFindByIdReturnsNotFound() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+        UUID patientId = createPatient(tokenA, "Ana", "Popescu");
+
+        mockMvc.perform(delete("/patients/" + patientId).header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(get("/patients/" + patientId).header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void delete_returnsNotFound_whenPatientBelongsToAnotherTenant() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+        String tokenB = login("test-controller-b", "staffB@test.com");
+        UUID patientId = createPatient(tokenA, "Ana", "Popescu");
+
+        mockMvc.perform(delete("/patients/" + patientId).header("Authorization", "Bearer " + tokenB))
+                .andExpect(status().isNotFound());
+    }
+
+    private UUID createPatient(String token, String firstName, String lastName) throws Exception {
+        PatientRequestDTO newPatient = new PatientRequestDTO(
+                firstName, lastName, LocalDate.of(1990, 1, 1),
+                null, null, null, null, null, null, null, null, null);
+
+        String response = mockMvc.perform(post("/patients")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newPatient)))
+                .andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString();
+
+        return UUID.fromString(objectMapper.readTree(response).get("id").asString());
+    }
+
     private String login(String orgSlug, String email) throws Exception {
         String body = """
                 {"orgSlug":"%s","email":"%s","password":"%s"}
@@ -116,7 +218,7 @@ class PatientControllerTenantIsolationTest {
                 .andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString();
 
-        return objectMapper.readTree(response).get("token").asText();
+        return objectMapper.readTree(response).get("token").asString();
     }
 
     private Organization newOrganization(String name, String slug) {

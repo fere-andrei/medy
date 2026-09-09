@@ -9,6 +9,7 @@ import com.example.medy.patient.internal.enums.Gender;
 import org.junit.jupiter.api.Test;
 
 import java.time.LocalDate;
+import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -79,5 +80,24 @@ class PatientMapperTest {
         PatientResponseDTO response = mapper.toResponse(patient);
 
         assertThat(response.address()).isNull();
+    }
+
+    @Test
+    void updateEntityFromRequest_overwritesFieldsButNeverTheId() {
+        Patient patient = new Patient();
+        patient.setId(UUID.randomUUID());
+        patient.setFirstName("Old");
+        patient.setLastName("Name");
+        UUID originalId = patient.getId();
+
+        PatientRequestDTO request = new PatientRequestDTO(
+                "New", "Name", LocalDate.of(1985, 5, 5), Gender.MALE,
+                null, null, null, null, null, null, null, null);
+
+        mapper.updateEntityFromRequest(request, patient);
+
+        assertThat(patient.getId()).isEqualTo(originalId);
+        assertThat(patient.getFirstName()).isEqualTo("New");
+        assertThat(patient.getDateOfBirth()).isEqualTo(LocalDate.of(1985, 5, 5));
     }
 }
