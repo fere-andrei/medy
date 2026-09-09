@@ -75,6 +75,10 @@ class SecurityConfig {
                     // module — role check only, no entitlement gate.
                     auth.requestMatchers("/users/**").hasRole(Role.CLINIC_ADMIN.name());
 
+                    // API docs require a valid session but no specific role — any
+                    // authenticated staff member can read the API contract.
+                    auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").authenticated();
+
                     // Deny by default: any new controller must get an explicit rule
                     // above (permitAll, a ModuleAccessRule, or its own matcher) or
                     // it's unreachable, rather than silently inheriting open access.
