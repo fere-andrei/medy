@@ -34,10 +34,10 @@ public class PatientService {
 
     public PatientResponseDTO create(PatientRequestDTO request) {
         Patient patient = patientMapper.toEntity(request);
-        return PatientResponseDTO.from(patientRepository.save(patient));
+        return patientMapper.toResponse(patientRepository.save(patient));
     }
 
     public List<PatientResponseDTO> list() {
-        return patientRepository.findAll().stream().map(PatientResponseDTO::from).toList();
+        return patientRepository.findAll().stream().map(patientMapper::toResponse).toList();
     }
 }
