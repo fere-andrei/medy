@@ -3,6 +3,7 @@ package com.example.medy.patient.internal.controller;
 import com.example.medy.patient.internal.dto.PatientRequestDTO;
 import com.example.medy.patient.internal.dto.PatientResponseDTO;
 import com.example.medy.patient.internal.service.PatientService;
+import jakarta.validation.Valid;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -22,7 +23,7 @@ class PatientController {
     }
 
     @PostMapping
-    PatientResponseDTO create(@RequestBody PatientRequestDTO request) {
+    PatientResponseDTO create(@Valid @RequestBody PatientRequestDTO request) {
         return patientService.create(request);
     }
 

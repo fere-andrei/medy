@@ -4,6 +4,7 @@ import com.example.medy.core.security.internal.entity.User;
 import com.example.medy.core.security.internal.jwt.JwtService;
 import com.example.medy.core.security.internal.repository.UserRepository;
 import com.example.medy.core.tenancy.internal.repository.OrganizationRepository;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -35,7 +36,7 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request) {
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         Optional<User> user = request.orgSlug() != null
                 ? organizationRepository.findBySlug(request.orgSlug())
                         .flatMap(org -> userRepository.findByTenantIdAndEmail(org.getId(), request.email()))
