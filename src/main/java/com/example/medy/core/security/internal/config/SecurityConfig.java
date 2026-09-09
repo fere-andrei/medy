@@ -71,6 +71,10 @@ class SecurityConfig {
                                 new ModuleEntitlementAuthorizationManager(rule.moduleCode(), entitlementRepository)));
                     }
 
+                    // Staff invitation is core tenant administration, not a licensed
+                    // module — role check only, no entitlement gate.
+                    auth.requestMatchers("/users/**").hasRole(Role.CLINIC_ADMIN.name());
+
                     // Deny by default: any new controller must get an explicit rule
                     // above (permitAll, a ModuleAccessRule, or its own matcher) or
                     // it's unreachable, rather than silently inheriting open access.
