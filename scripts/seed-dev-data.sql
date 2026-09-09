@@ -41,3 +41,10 @@ INSERT INTO users (id, tenant_id, email, password_hash, full_name, role) VALUES
 
     (gen_random_uuid(), NULL, 'root@medy.app',
      '$2a$10$C/V85marDUGPkctbuk8Ksu7SWO6D8AFUAqmldCLb/ckhQ.Dz278ka', 'Platform Admin', 'SUPER_ADMIN');
+
+-- Module entitlements. Without a row here (or with enabled=false), a clinic's
+-- staff get 403 on /patients/** regardless of their role — to see that,
+-- toggle one of these rows to enabled=false.
+INSERT INTO tenant_module_entitlements (id, tenant_id, module_code, enabled) VALUES
+    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000001', 'PATIENT_MANAGEMENT', true),
+    (gen_random_uuid(), 'a0000000-0000-0000-0000-000000000002', 'PATIENT_MANAGEMENT', true);

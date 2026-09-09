@@ -1,5 +1,8 @@
 package com.example.medy.patient;
 
+import com.example.medy.core.licensing.internal.entity.TenantModuleEntitlement;
+import com.example.medy.core.licensing.internal.enums.ModuleCode;
+import com.example.medy.core.licensing.internal.repository.TenantModuleEntitlementRepository;
 import com.example.medy.core.security.internal.entity.User;
 import com.example.medy.core.security.internal.enums.Role;
 import com.example.medy.core.security.internal.repository.UserRepository;
@@ -47,6 +50,8 @@ class PatientControllerTenantIsolationTest {
     private PatientRepository patientRepository;
     @Autowired
     private PasswordEncoder passwordEncoder;
+    @Autowired
+    private TenantModuleEntitlementRepository entitlementRepository;
 
     private Organization orgA;
     private Organization orgB;
@@ -60,6 +65,9 @@ class PatientControllerTenantIsolationTest {
 
         userA = userRepository.save(newUser(orgA.getId(), "staffA@test.com"));
         userB = userRepository.save(newUser(orgB.getId(), "staffB@test.com"));
+
+        entitlementRepository.save(newEntitlement(orgA.getId(), true));
+        entitlementRepository.save(newEntitlement(orgB.getId(), true));
     }
 
     @AfterEach
@@ -70,6 +78,9 @@ class PatientControllerTenantIsolationTest {
         patientRepository.deleteAll();
         TenantContext.clear();
 
+        entitlementRepository.deleteAll(entitlementRepository.findAll().stream()
+                .filter(e -> e.getTenantId().equals(orgA.getId()) || e.getTenantId().equals(orgB.getId()))
+                .toList());
         userRepository.delete(userA);
         userRepository.delete(userB);
         organizationRepository.delete(orgA);
@@ -79,6 +90,36 @@ class PatientControllerTenantIsolationTest {
     @Test
     void noToken_isRejected() throws Exception {
         mockMvc.perform(get("/patients"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deniesAccess_whenTenantLacksThePatientManagementEntitlement() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+
+        TenantModuleEntitlement entitlement = entitlementRepository
+                .findAll().stream()
+                .filter(e -> e.getTenantId().equals(orgA.getId()))
+                .findFirst().orElseThrow();
+        entitlement.setEnabled(false);
+        entitlementRepository.save(entitlement);
+
+        mockMvc.perform(get("/patients").header("Authorization", "Bearer " + tokenA))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deniesAccess_whenEntitlementHasExpired() throws Exception {
+        String tokenA = login("test-controller-a", "staffA@test.com");
+
+        TenantModuleEntitlement entitlement = entitlementRepository
+                .findAll().stream()
+                .filter(e -> e.getTenantId().equals(orgA.getId()))
+                .findFirst().orElseThrow();
+        entitlement.setValidUntil(java.time.Instant.now().minusSeconds(60));
+        entitlementRepository.save(entitlement);
+
+        mockMvc.perform(get("/patients").header("Authorization", "Bearer " + tokenA))
                 .andExpect(status().isForbidden());
     }
 
@@ -226,6 +267,14 @@ class PatientControllerTenantIsolationTest {
         organization.setName(name);
         organization.setSlug(slug);
         return organization;
+    }
+
+    private TenantModuleEntitlement newEntitlement(UUID tenantId, boolean enabled) {
+        TenantModuleEntitlement entitlement = new TenantModuleEntitlement();
+        entitlement.setTenantId(tenantId);
+        entitlement.setModuleCode(ModuleCode.PATIENT_MANAGEMENT);
+        entitlement.setEnabled(enabled);
+        return entitlement;
     }
 
     private User newUser(java.util.UUID tenantId, String email) {

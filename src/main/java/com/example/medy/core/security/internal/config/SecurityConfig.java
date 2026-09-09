@@ -1,9 +1,14 @@
 package com.example.medy.core.security.internal.config;
 
+import com.example.medy.core.licensing.internal.enums.ModuleCode;
+import com.example.medy.core.licensing.internal.repository.TenantModuleEntitlementRepository;
+import com.example.medy.core.licensing.internal.security.ModuleEntitlementAuthorizationManager;
 import com.example.medy.core.security.internal.enums.Role;
 import com.example.medy.core.security.internal.filter.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.security.authorization.AuthorityAuthorizationManager;
+import org.springframework.security.authorization.AuthorizationManagers;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
@@ -18,9 +23,13 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 class SecurityConfig {
 
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
+    private final TenantModuleEntitlementRepository entitlementRepository;
 
-    SecurityConfig(JwtAuthenticationFilter jwtAuthenticationFilter) {
+    SecurityConfig(
+            JwtAuthenticationFilter jwtAuthenticationFilter,
+            TenantModuleEntitlementRepository entitlementRepository) {
         this.jwtAuthenticationFilter = jwtAuthenticationFilter;
+        this.entitlementRepository = entitlementRepository;
     }
 
     @Bean
@@ -40,11 +49,14 @@ class SecurityConfig {
                         // unauthenticated request — blocking it would clobber every error
                         // body (including this controller's own 401s) with a generic 403.
                         .requestMatchers("/auth/**", "/error").permitAll()
-                        .requestMatchers("/patients/**").hasAnyRole(
-                                Role.CLINIC_ADMIN.name(),
-                                Role.DOCTOR.name(),
-                                Role.RECEPTIONIST.name(),
-                                Role.ASSISTANT.name())
+                        .requestMatchers("/patients/**").access(AuthorizationManagers.allOf(
+                                AuthorityAuthorizationManager.hasAnyRole(
+                                        Role.CLINIC_ADMIN.name(),
+                                        Role.DOCTOR.name(),
+                                        Role.RECEPTIONIST.name(),
+                                        Role.ASSISTANT.name()),
+                                new ModuleEntitlementAuthorizationManager(
+                                        ModuleCode.PATIENT_MANAGEMENT, entitlementRepository)))
                         .anyRequest().authenticated())
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
