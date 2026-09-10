@@ -6,10 +6,9 @@ import com.example.medy.core.security.internal.entity.User;
 import com.example.medy.core.security.internal.jwt.JwtService;
 import com.example.medy.core.security.internal.repository.UserRepository;
 import com.example.medy.core.tenancy.internal.repository.OrganizationRepository;
-import org.springframework.http.HttpStatus;
+import com.example.medy.core.web.AuthenticationFailedException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Optional;
 
@@ -43,8 +42,9 @@ public class AuthService {
                 : userRepository.findByTenantIdIsNullAndEmail(request.email());
 
         User authenticated = user
+                .filter(User::isActive)
                 .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
-                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
+                .orElseThrow(() -> new AuthenticationFailedException("Invalid credentials"));
 
         return new LoginResponseDTO(jwtService.issueToken(authenticated));
     }

@@ -48,4 +48,8 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(name = "role", nullable = false)
     private Role role;
+
+    /** Deactivated staff can't authenticate — checked on every request, not just at login. */
+    @Column(name = "active", nullable = false)
+    private boolean active = true;
 }

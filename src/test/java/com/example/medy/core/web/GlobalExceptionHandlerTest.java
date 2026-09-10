@@ -83,6 +83,39 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleInvalidRequest_returnsBadRequest() {
+        ProblemDetail problem = handler.handleInvalidRequest(new InvalidRequestException("startTime must be before endTime"));
+
+        assertThat(problem.getStatus()).isEqualTo(400);
+        assertThat(problem.getDetail()).isEqualTo("startTime must be before endTime");
+    }
+
+    @Test
+    void handleResourceConflict_returnsConflict() {
+        ProblemDetail problem = handler.handleResourceConflict(new ResourceConflictException("Email is already registered"));
+
+        assertThat(problem.getStatus()).isEqualTo(409);
+        assertThat(problem.getDetail()).isEqualTo("Email is already registered");
+    }
+
+    @Test
+    void handleAuthenticationFailed_returnsUnauthorized() {
+        ProblemDetail problem = handler.handleAuthenticationFailed(new AuthenticationFailedException("Invalid credentials"));
+
+        assertThat(problem.getStatus()).isEqualTo(401);
+        assertThat(problem.getDetail()).isEqualTo("Invalid credentials");
+    }
+
+    @Test
+    void handleForbiddenOperation_returnsForbidden() {
+        ProblemDetail problem =
+                handler.handleForbiddenOperation(new ForbiddenOperationException("Role SUPER_ADMIN cannot be assigned"));
+
+        assertThat(problem.getStatus()).isEqualTo(403);
+        assertThat(problem.getDetail()).isEqualTo("Role SUPER_ADMIN cannot be assigned");
+    }
+
+    @Test
     void handleAccessDenied_returnsForbidden() {
         ProblemDetail problem = handler.handleAccessDenied(new AccessDeniedException("denied"));
 

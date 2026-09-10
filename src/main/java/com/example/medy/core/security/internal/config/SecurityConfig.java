@@ -77,8 +77,13 @@ class SecurityConfig {
                                 new ModuleEntitlementAuthorizationManager(rule.moduleCode(), entitlementRepository)));
                     }
 
-                    // Staff invitation is core tenant administration, not a licensed
-                    // module — role check only, no entitlement gate.
+                    // Self-service on your own account (e.g. changing your own
+                    // password) needs no particular role — carved out before the
+                    // broader /users/** rule below, which requires CLINIC_ADMIN.
+                    auth.requestMatchers("/users/me/**").authenticated();
+
+                    // Staff invitation/management is core tenant administration, not
+                    // a licensed module — role check only, no entitlement gate.
                     auth.requestMatchers("/users/**").hasRole(Role.CLINIC_ADMIN.name());
 
                     // Listing tenants is platform administration — only a SUPER_ADMIN

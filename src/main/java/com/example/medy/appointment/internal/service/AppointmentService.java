@@ -6,10 +6,10 @@ import com.example.medy.appointment.internal.entity.Appointment;
 import com.example.medy.appointment.internal.enums.AppointmentStatus;
 import com.example.medy.appointment.internal.mapper.AppointmentMapper;
 import com.example.medy.appointment.internal.repository.AppointmentRepository;
+import com.example.medy.core.web.InvalidRequestException;
+import com.example.medy.core.web.ResourceConflictException;
 import com.example.medy.core.web.ResourceNotFoundException;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.EnumSet;
 import java.util.List;
@@ -70,7 +70,7 @@ public class AppointmentService {
 
     private void validateTimeRange(AppointmentRequestDTO request) {
         if (!request.startTime().isBefore(request.endTime())) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "startTime must be before endTime");
+            throw new InvalidRequestException("startTime must be before endTime");
         }
     }
 
@@ -81,7 +81,7 @@ public class AppointmentService {
         boolean conflict = appointmentRepository.hasConflict(
                 request.doctorId(), request.startTime(), request.endTime(), ACTIVE_STATUSES, excludeAppointmentId);
         if (conflict) {
-            throw new ResponseStatusException(HttpStatus.CONFLICT, "Doctor already has an overlapping appointment");
+            throw new ResourceConflictException("Doctor already has an overlapping appointment");
         }
     }
 

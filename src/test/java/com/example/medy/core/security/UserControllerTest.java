@@ -19,7 +19,10 @@ import org.springframework.test.web.servlet.MockMvc;
 import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -135,6 +138,181 @@ class UserControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void clinicAdmin_listsStaffInOwnTenant() throws Exception {
+        String token = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(get("/users").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[?(@.email == 'doctor@test.com')]").exists());
+    }
+
+    @Test
+    void deactivatedUsersToken_stopsWorkingImmediately_evenThoughUnexpired() throws Exception {
+        String doctorToken = login("test-users-a", "doctor@test.com");
+        String adminToken = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(put("/users/me/password")
+                        .header("Authorization", "Bearer " + doctorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"password123","newPassword":"stillWorksPass1"}
+                                """))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(delete("/users/" + doctor.getId()).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(put("/users/me/password")
+                        .header("Authorization", "Bearer " + doctorToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"stillWorksPass1","newPassword":"anotherPass1"}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void deactivatedUser_cannotLogInAgain() throws Exception {
+        String adminToken = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(delete("/users/" + doctor.getId()).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orgSlug":"test-users-a","email":"doctor@test.com","password":"password123"}
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void clinicAdmin_cannotDeactivateOwnAccount() throws Exception {
+        String token = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(delete("/users/" + clinicAdmin.getId()).header("Authorization", "Bearer " + token))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deactivate_returnsNotFound_forUserInAnotherTenant() throws Exception {
+        Organization orgB = organizationRepository.save(newOrganization("Other Clinic", "test-users-b"));
+        User otherTenantStaff = userRepository.save(newUser(orgB.getId(), "staffB@test.com", Role.DOCTOR));
+        String token = login("test-users-a", "admin@test.com");
+
+        try {
+            mockMvc.perform(delete("/users/" + otherTenantStaff.getId()).header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNotFound());
+        } finally {
+            userRepository.delete(otherTenantStaff);
+            organizationRepository.delete(orgB);
+        }
+    }
+
+    @Test
+    void changeRole_updatesTheStaffMembersRole() throws Exception {
+        String token = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(put("/users/" + doctor.getId() + "/role")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"RECEPTIONIST"}
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.role").value("RECEPTIONIST"));
+
+        assertThat(userRepository.findById(doctor.getId()).orElseThrow().getRole()).isEqualTo(Role.RECEPTIONIST);
+    }
+
+    @Test
+    void changeRole_rejectsDisallowedRole() throws Exception {
+        String token = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(put("/users/" + doctor.getId() + "/role")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"CLINIC_ADMIN"}
+                                """))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void changeRole_cannotChangeOwnRole() throws Exception {
+        String token = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(put("/users/" + clinicAdmin.getId() + "/role")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"role":"DOCTOR"}
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void adminResetsPassword_thenLoginUsesTheNewPasswordOnly() throws Exception {
+        String token = login("test-users-a", "admin@test.com");
+
+        mockMvc.perform(put("/users/" + doctor.getId() + "/password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"newPassword":"resetByAdmin1"}
+                                """))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orgSlug":"test-users-a","email":"doctor@test.com","password":"password123"}
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orgSlug":"test-users-a","email":"doctor@test.com","password":"resetByAdmin1"}
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void selfServicePasswordChange_rejectsWrongCurrentPassword() throws Exception {
+        String token = login("test-users-a", "doctor@test.com");
+
+        mockMvc.perform(put("/users/me/password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"wrongPassword","newPassword":"newSecurePass1"}
+                                """))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void selfServicePasswordChange_anyStaffRoleCanChangeTheirOwnPassword() throws Exception {
+        String token = login("test-users-a", "doctor@test.com");
+
+        mockMvc.perform(put("/users/me/password")
+                        .header("Authorization", "Bearer " + token)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"currentPassword":"password123","newPassword":"newSecurePass1"}
+                                """))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orgSlug":"test-users-a","email":"doctor@test.com","password":"newSecurePass1"}
+                                """))
+                .andExpect(status().isOk());
     }
 
     private String login(String orgSlug, String email) throws Exception {
