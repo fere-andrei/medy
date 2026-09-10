@@ -7,6 +7,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -55,6 +56,17 @@ class GlobalExceptionHandlerTest {
         ProblemDetail problem = handler.handleResponseStatus(ex);
 
         assertThat(problem.getDetail()).isEqualTo("Request failed");
+    }
+
+    @Test
+    void handleTypeMismatch_returnsBadRequestNamingTheOffendingParameter() {
+        MethodArgumentTypeMismatchException ex = mock(MethodArgumentTypeMismatchException.class);
+        when(ex.getName()).thenReturn("moduleCode");
+
+        ProblemDetail problem = handler.handleTypeMismatch(ex);
+
+        assertThat(problem.getStatus()).isEqualTo(400);
+        assertThat(problem.getDetail()).isEqualTo("Invalid value for 'moduleCode'");
     }
 
     @Test
