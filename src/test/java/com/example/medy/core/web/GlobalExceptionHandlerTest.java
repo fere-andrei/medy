@@ -1,6 +1,7 @@
 package com.example.medy.core.web;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
@@ -9,6 +10,7 @@ import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
@@ -67,6 +69,17 @@ class GlobalExceptionHandlerTest {
 
         assertThat(problem.getStatus()).isEqualTo(400);
         assertThat(problem.getDetail()).isEqualTo("Invalid value for 'moduleCode'");
+    }
+
+    @Test
+    void handleNoResourceFound_returnsNotFound() {
+        NoResourceFoundException ex =
+                new NoResourceFoundException(HttpMethod.GET, "/swagger-ui/index.html", "swagger-ui/index.html");
+
+        ProblemDetail problem = handler.handleNoResourceFound(ex);
+
+        assertThat(problem.getStatus()).isEqualTo(404);
+        assertThat(problem.getDetail()).isEqualTo("No such endpoint");
     }
 
     @Test
