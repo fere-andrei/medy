@@ -63,7 +63,13 @@ class SecurityConfig {
                     // and that forward re-enters this same filter chain as a fresh,
                     // unauthenticated request — blocking it would clobber every error
                     // body (including this controller's own 401s) with a generic 403.
-                    auth.requestMatchers("/auth/**", "/error").permitAll();
+                    // API docs are public: a JWT is header-based and stateless, so a
+                    // plain browser navigation can't attach one — gating the docs
+                    // page itself behind the same scheme would make it unopenable.
+                    // The real endpoints documented here stay behind their own rules.
+                    auth.requestMatchers(
+                            "/auth/**", "/error", "/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**")
+                            .permitAll();
 
                     for (ModuleAccessRule rule : MODULE_ACCESS_RULES) {
                         auth.requestMatchers(rule.urlPattern()).access(AuthorizationManagers.allOf(
@@ -74,10 +80,6 @@ class SecurityConfig {
                     // Staff invitation is core tenant administration, not a licensed
                     // module — role check only, no entitlement gate.
                     auth.requestMatchers("/users/**").hasRole(Role.CLINIC_ADMIN.name());
-
-                    // API docs require a valid session but no specific role — any
-                    // authenticated staff member can read the API contract.
-                    auth.requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**").authenticated();
 
                     // Deny by default: any new controller must get an explicit rule
                     // above (permitAll, a ModuleAccessRule, or its own matcher) or
