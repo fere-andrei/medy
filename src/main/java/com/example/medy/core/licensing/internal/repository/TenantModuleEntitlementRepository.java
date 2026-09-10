@@ -7,9 +7,15 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.Instant;
+import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 
 public interface TenantModuleEntitlementRepository extends JpaRepository<TenantModuleEntitlement, UUID> {
+
+    List<TenantModuleEntitlement> findAllByTenantId(UUID tenantId);
+
+    Optional<TenantModuleEntitlement> findByTenantIdAndModuleCode(UUID tenantId, ModuleCode moduleCode);
 
     @Query("""
             select case when count(e) > 0 then true else false end

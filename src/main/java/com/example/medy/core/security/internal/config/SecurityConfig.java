@@ -81,6 +81,10 @@ class SecurityConfig {
                     // module — role check only, no entitlement gate.
                     auth.requestMatchers("/users/**").hasRole(Role.CLINIC_ADMIN.name());
 
+                    // Listing tenants is platform administration — only a SUPER_ADMIN
+                    // needs it (e.g. to find a tenant id for the X-Tenant-Id override).
+                    auth.requestMatchers("/organizations/**").hasRole(Role.SUPER_ADMIN.name());
+
                     // Deny by default: any new controller must get an explicit rule
                     // above (permitAll, a ModuleAccessRule, or its own matcher) or
                     // it's unreachable, rather than silently inheriting open access.
