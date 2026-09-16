@@ -61,6 +61,6 @@ public class PatientService {
 
     private Patient findPatientOrThrow(UUID id) {
         return patientRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Patient %s not found".formatted(id)));
+                .orElseThrow(() -> new ResourceNotFoundException(PatientMessages.PATIENT_NOT_FOUND.formatted(id)));
     }
 }

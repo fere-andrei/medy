@@ -1,0 +1,498 @@
+{
+  "info": {
+    "name": "Medy API",
+    "description": "All endpoints exposed by the medy backend. Run the 'Auth' and 'Users (as Clinic Admin) > Register Staff (Doctor)' requests first — later requests depend on the tokens/ids they capture into collection variables. Seed data assumed: scripts/seed-dev-data.sql.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:8080" },
+    { "key": "orgSlug", "value": "clinica-sorin" },
+    { "key": "clinicAdminEmail", "value": "admin@clinica-sorin.ro" },
+    { "key": "clinicAdminPassword", "value": "password123" },
+    { "key": "superAdminEmail", "value": "root@medy.app" },
+    { "key": "superAdminPassword", "value": "password123" },
+    { "key": "clinicAdminToken", "value": "" },
+    { "key": "superAdminToken", "value": "" },
+    { "key": "doctorToken", "value": "" },
+    { "key": "doctorEmail", "value": "new.doctor@clinica-sorin.ro" },
+    { "key": "doctorPassword", "value": "password123" },
+    { "key": "staffUserId", "value": "" },
+    { "key": "tenantId", "value": "a0000000-0000-0000-0000-000000000001" },
+    { "key": "patientId", "value": "" },
+    { "key": "appointmentId", "value": "" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login (Clinic Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('clinicAdminToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orgSlug\": \"{{orgSlug}}\",\n  \"email\": \"{{clinicAdminEmail}}\",\n  \"password\": \"{{clinicAdminPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login (Super Admin)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('superAdminToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{superAdminEmail}}\",\n  \"password\": \"{{superAdminPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          }
+        },
+        {
+          "name": "Login (Doctor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('doctorToken', pm.response.json().token);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orgSlug\": \"{{orgSlug}}\",\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/auth/login", "host": ["{{baseUrl}}"], "path": ["auth", "login"] }
+          },
+          "description": "Run 'Register Staff (Doctor)' below first — this account doesn't exist until then."
+        }
+      ]
+    },
+    {
+      "name": "Users (as Clinic Admin)",
+      "item": [
+        {
+          "name": "Register Staff (Doctor)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 201', () => pm.response.to.have.status(201));",
+                  "pm.collectionVariables.set('staffUserId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"{{doctorEmail}}\",\n  \"password\": \"{{doctorPassword}}\",\n  \"fullName\": \"New Doctor\",\n  \"role\": \"DOCTOR\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] }
+          },
+          "description": "Assignable roles only: DOCTOR, RECEPTIONIST, ASSISTANT. CLINIC_ADMIN/ACCOUNTANT/SUPER_ADMIN are rejected with 403."
+        },
+        {
+          "name": "List Staff",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/users", "host": ["{{baseUrl}}"], "path": ["users"] }
+          }
+        },
+        {
+          "name": "Change Staff Role",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"role\": \"RECEPTIONIST\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{staffUserId}}/role",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{staffUserId}}", "role"]
+            }
+          },
+          "description": "A CLINIC_ADMIN can't target their own account here (400), and can't assign CLINIC_ADMIN/ACCOUNTANT/SUPER_ADMIN (403)."
+        },
+        {
+          "name": "Admin Reset Staff Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"newPassword\": \"resetByAdmin1\"\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/users/{{staffUserId}}/password",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{staffUserId}}", "password"]
+            }
+          },
+          "description": "No old password required — this is an administrative override, not self-service."
+        },
+        {
+          "name": "Deactivate Staff",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/users/{{staffUserId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["users", "{{staffUserId}}"]
+            }
+          },
+          "description": "Soft-deactivates the account (204). Their token stops working on the very next request, even if unexpired. A CLINIC_ADMIN can't deactivate themselves (400)."
+        }
+      ]
+    },
+    {
+      "name": "Users (Self-Service)",
+      "item": [
+        {
+          "name": "Change My Password",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{doctorToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"currentPassword\": \"{{doctorPassword}}\",\n  \"newPassword\": \"aNewSecurePass1\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/users/me/password", "host": ["{{baseUrl}}"], "path": ["users", "me", "password"] }
+          },
+          "description": "Any authenticated role can call this on their own account — requires the current password, unlike the admin-reset endpoint."
+        }
+      ]
+    },
+    {
+      "name": "Patients",
+      "item": [
+        {
+          "name": "Create Patient",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('patientId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ana\",\n  \"lastName\": \"Popescu\",\n  \"dateOfBirth\": \"1990-01-01\",\n  \"gender\": \"FEMALE\",\n  \"nationalId\": \"2900101123456\",\n  \"email\": \"ana.popescu@example.com\",\n  \"phoneNumber\": \"0722111222\",\n  \"address\": {\n    \"addressLine\": \"Str. Florilor 12\",\n    \"city\": \"Cluj-Napoca\",\n    \"county\": \"Cluj\",\n    \"postalCode\": \"400001\",\n    \"country\": \"Romania\"\n  },\n  \"insuranceProvider\": \"CNAS\",\n  \"insuranceNumber\": \"INS-1001\",\n  \"emergencyContactName\": \"Mihai Popescu\",\n  \"emergencyContactPhone\": \"0722111333\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/patients", "host": ["{{baseUrl}}"], "path": ["patients"] }
+          },
+          "description": "Requires the tenant's PATIENT_MANAGEMENT entitlement to be enabled. Only firstName, lastName, dateOfBirth are mandatory — everything else may be omitted/null."
+        },
+        {
+          "name": "List Patients",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/patients", "host": ["{{baseUrl}}"], "path": ["patients"] }
+          }
+        },
+        {
+          "name": "Get Patient By Id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Patient",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Ana-Maria\",\n  \"lastName\": \"Popescu\",\n  \"dateOfBirth\": \"1990-01-01\",\n  \"gender\": \"FEMALE\",\n  \"nationalId\": \"2900101123456\",\n  \"email\": \"ana.popescu@example.com\",\n  \"phoneNumber\": \"0722111222\",\n  \"address\": null,\n  \"insuranceProvider\": \"CNAS\",\n  \"insuranceNumber\": \"INS-1001\",\n  \"emergencyContactName\": \"Mihai Popescu\",\n  \"emergencyContactPhone\": \"0722111333\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Patient",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/patients/{{patientId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["patients", "{{patientId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Appointments",
+      "item": [
+        {
+          "name": "Create Appointment",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('status is 200', () => pm.response.to.have.status(200));",
+                  "pm.collectionVariables.set('appointmentId', pm.response.json().id);"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"doctorId\": \"{{staffUserId}}\",\n  \"startTime\": \"2027-01-15T09:00:00Z\",\n  \"endTime\": \"2027-01-15T09:30:00Z\",\n  \"status\": \"CONFIRMED\",\n  \"notes\": \"First visit\"\n}"
+            },
+            "url": { "raw": "{{baseUrl}}/appointments", "host": ["{{baseUrl}}"], "path": ["appointments"] }
+          },
+          "description": "Requires the tenant's APPOINTMENTS entitlement. patientId/doctorId aren't cross-checked against the patient/user modules — any UUID is accepted. status must be one of REQUESTED, CONFIRMED, CHECKED_IN, IN_TREATMENT, COMPLETED, CANCELLED, NO_SHOW."
+        },
+        {
+          "name": "List Appointments",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/appointments", "host": ["{{baseUrl}}"], "path": ["appointments"] }
+          }
+        },
+        {
+          "name": "Get Appointment By Id",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "{{appointmentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Appointment",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"patientId\": \"{{patientId}}\",\n  \"doctorId\": \"{{staffUserId}}\",\n  \"startTime\": \"2027-01-15T10:00:00Z\",\n  \"endTime\": \"2027-01-15T10:30:00Z\",\n  \"status\": \"CHECKED_IN\",\n  \"notes\": \"Rescheduled\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "{{appointmentId}}"]
+            }
+          }
+        },
+        {
+          "name": "Delete Appointment",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{clinicAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/appointments/{{appointmentId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["appointments", "{{appointmentId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Organizations (Super Admin)",
+      "item": [
+        {
+          "name": "List Organizations",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const orgs = pm.response.json();",
+                  "if (Array.isArray(orgs) && orgs.length > 0) { pm.collectionVariables.set('tenantId', orgs[0].id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": { "raw": "{{baseUrl}}/organizations", "host": ["{{baseUrl}}"], "path": ["organizations"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Entitlements (Super Admin)",
+      "item": [
+        {
+          "name": "List Entitlements For Tenant",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{superAdminToken}}" }],
+            "url": {
+              "raw": "{{baseUrl}}/organizations/{{tenantId}}/entitlements",
+              "host": ["{{baseUrl}}"],
+              "path": ["organizations", "{{tenantId}}", "entitlements"]
+            }
+          },
+          "description": "Always returns one row per ModuleCode (PATIENT_MANAGEMENT, APPOINTMENTS), even if the tenant has no row yet — reported as disabled."
+        },
+        {
+          "name": "Enable Module For Tenant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{superAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"enabled\": true\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/organizations/{{tenantId}}/entitlements/PATIENT_MANAGEMENT",
+              "host": ["{{baseUrl}}"],
+              "path": ["organizations", "{{tenantId}}", "entitlements", "PATIENT_MANAGEMENT"]
+            }
+          },
+          "description": "validUntil is optional — omit it, or set it, for a time-limited grant. Path segment must be a real ModuleCode (PATIENT_MANAGEMENT or APPOINTMENTS) or you get 400."
+        },
+        {
+          "name": "Disable Module For Tenant",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{superAdminToken}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": { "mode": "raw", "raw": "{\n  \"enabled\": false\n}" },
+            "url": {
+              "raw": "{{baseUrl}}/organizations/{{tenantId}}/entitlements/APPOINTMENTS",
+              "host": ["{{baseUrl}}"],
+              "path": ["organizations", "{{tenantId}}", "entitlements", "APPOINTMENTS"]
+            }
+          },
+          "description": "Takes effect immediately on the tenant's next request to /appointments/** — the entitlement check is live per-request, not cached."
+        }
+      ]
+    },
+    {
+      "name": "Super Admin Tenant Override",
+      "item": [
+        {
+          "name": "Get Patients As Super Admin (X-Tenant-Id)",
+          "request": {
+            "method": "GET",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{superAdminToken}}" },
+              { "key": "X-Tenant-Id", "value": "{{tenantId}}" }
+            ],
+            "url": { "raw": "{{baseUrl}}/patients", "host": ["{{baseUrl}}"], "path": ["patients"] }
+          },
+          "description": "A SUPER_ADMIN has no home tenant, so tenant-scoped endpoints need X-Tenant-Id to say which tenant to act on. Honored only for SUPER_ADMIN — every other role's tenant comes solely from their own JWT. Omit the header and you get 403."
+        }
+      ]
+    },
+    {
+      "name": "API Docs (public)",
+      "item": [
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{baseUrl}}/v3/api-docs", "host": ["{{baseUrl}}"], "path": ["v3", "api-docs"] }
+          }
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui/index.html",
+              "host": ["{{baseUrl}}"],
+              "path": ["swagger-ui", "index.html"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}

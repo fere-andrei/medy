@@ -56,7 +56,7 @@ public class UserService {
         UUID tenantId = TenantContext.getCurrentTenant();
 
         if (userRepository.findByTenantIdAndEmail(tenantId, request.email()).isPresent()) {
-            throw new ResourceConflictException("Email is already registered in this clinic");
+            throw new ResourceConflictException(SecurityMessages.EMAIL_ALREADY_REGISTERED);
         }
 
         User user = userMapper.toEntity(request);
@@ -72,15 +72,21 @@ public class UserService {
     }
 
     public void deactivate(UUID targetUserId, UUID callerUserId) {
-        requireNotSelf(targetUserId, callerUserId, "deactivate your own account");
+        requireNotSelf(targetUserId, callerUserId);
 
         User user = findStaffOrThrow(targetUserId);
         user.setActive(false);
         userRepository.save(user);
     }
 
+    public void reactivate(UUID targetUserId) {
+        User user = findStaffOrThrow(targetUserId);
+        user.setActive(true);
+        userRepository.save(user);
+    }
+
     public UserResponseDTO changeRole(UUID targetUserId, UUID callerUserId, ChangeRoleRequestDTO request) {
-        requireNotSelf(targetUserId, callerUserId, "change your own role");
+        requireNotSelf(targetUserId, callerUserId);
         requireAssignableRole(request.role());
 
         User user = findStaffOrThrow(targetUserId);
@@ -97,10 +103,10 @@ public class UserService {
 
     public void changeOwnPassword(UUID callerUserId, ChangeOwnPasswordRequestDTO request) {
         User user = userRepository.findById(callerUserId)
-                .orElseThrow(() -> new ResourceNotFoundException("User " + callerUserId + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(SecurityMessages.USER_NOT_FOUND.formatted(callerUserId)));
 
         if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {
-            throw new AuthenticationFailedException("Current password is incorrect");
+            throw new AuthenticationFailedException(SecurityMessages.CURRENT_PASSWORD_INCORRECT);
         }
 
         user.setPasswordHash(passwordEncoder.encode(request.newPassword()));
@@ -110,18 +116,18 @@ public class UserService {
     private User findStaffOrThrow(UUID userId) {
         UUID tenantId = TenantContext.getCurrentTenant();
         return userRepository.findByIdAndTenantId(userId, tenantId)
-                .orElseThrow(() -> new ResourceNotFoundException("User " + userId + " not found"));
+                .orElseThrow(() -> new ResourceNotFoundException(SecurityMessages.USER_NOT_FOUND.formatted(userId)));
     }
 
     private void requireAssignableRole(Role role) {
         if (!ASSIGNABLE_ROLES.contains(role)) {
-            throw new ForbiddenOperationException("Role " + role + " cannot be assigned through this endpoint");
+            throw new ForbiddenOperationException(SecurityMessages.ROLE_NOT_ASSIGNABLE.formatted(role));
         }
     }
 
-    private void requireNotSelf(UUID targetUserId, UUID callerUserId, String action) {
+    private void requireNotSelf(UUID targetUserId, UUID callerUserId) {
         if (targetUserId.equals(callerUserId)) {
-            throw new InvalidRequestException("You cannot " + action);
+            throw new InvalidRequestException(SecurityMessages.CANNOT_ACT_ON_OWN_ACCOUNT);
         }
     }
 }

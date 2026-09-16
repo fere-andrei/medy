@@ -64,7 +64,7 @@ class UserControllerTest {
 
     @Test
     void clinicAdmin_canRegisterDoctorStaff() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         String body = """
                 {"email":"newdoc@test.com","password":"securePass1","fullName":"New Doc","role":"DOCTOR"}
@@ -85,7 +85,7 @@ class UserControllerTest {
 
     @Test
     void clinicAdmin_cannotAssignAdminRole() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         String body = """
                 {"email":"peer@test.com","password":"securePass1","fullName":"Peer Admin","role":"CLINIC_ADMIN"}
@@ -100,7 +100,7 @@ class UserControllerTest {
 
     @Test
     void duplicateEmailInSameTenant_isRejectedWithConflict() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         String body = """
                 {"email":"doctor@test.com","password":"securePass1","fullName":"Duplicate","role":"DOCTOR"}
@@ -115,7 +115,7 @@ class UserControllerTest {
 
     @Test
     void nonAdminStaff_isDeniedAccess() throws Exception {
-        String token = login("test-users-a", "doctor@test.com");
+        String token = login("doctor@test.com");
 
         String body = """
                 {"email":"another@test.com","password":"securePass1","fullName":"Another","role":"DOCTOR"}
@@ -142,7 +142,7 @@ class UserControllerTest {
 
     @Test
     void clinicAdmin_listsStaffInOwnTenant() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         mockMvc.perform(get("/users").header("Authorization", "Bearer " + token))
                 .andExpect(status().isOk())
@@ -152,8 +152,8 @@ class UserControllerTest {
 
     @Test
     void deactivatedUsersToken_stopsWorkingImmediately_evenThoughUnexpired() throws Exception {
-        String doctorToken = login("test-users-a", "doctor@test.com");
-        String adminToken = login("test-users-a", "admin@test.com");
+        String doctorToken = login("doctor@test.com");
+        String adminToken = login("admin@test.com");
 
         mockMvc.perform(put("/users/me/password")
                         .header("Authorization", "Bearer " + doctorToken)
@@ -177,7 +177,7 @@ class UserControllerTest {
 
     @Test
     void deactivatedUser_cannotLogInAgain() throws Exception {
-        String adminToken = login("test-users-a", "admin@test.com");
+        String adminToken = login("admin@test.com");
 
         mockMvc.perform(delete("/users/" + doctor.getId()).header("Authorization", "Bearer " + adminToken))
                 .andExpect(status().isNoContent());
@@ -191,8 +191,49 @@ class UserControllerTest {
     }
 
     @Test
+    void clinicAdmin_canReactivateADeactivatedStaffMember() throws Exception {
+        String adminToken = login("admin@test.com");
+
+        mockMvc.perform(delete("/users/" + doctor.getId()).header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orgSlug":"test-users-a","email":"doctor@test.com","password":"password123"}
+                                """))
+                .andExpect(status().isUnauthorized());
+
+        mockMvc.perform(put("/users/" + doctor.getId() + "/reactivate").header("Authorization", "Bearer " + adminToken))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {"orgSlug":"test-users-a","email":"doctor@test.com","password":"password123"}
+                                """))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void reactivate_returnsNotFound_forUserInAnotherTenant() throws Exception {
+        Organization orgB = organizationRepository.save(newOrganization("Other Clinic", "test-users-c"));
+        User otherTenantStaff = userRepository.save(newUser(orgB.getId(), "staffC@test.com", Role.DOCTOR));
+        String token = login("admin@test.com");
+
+        try {
+            mockMvc.perform(put("/users/" + otherTenantStaff.getId() + "/reactivate")
+                            .header("Authorization", "Bearer " + token))
+                    .andExpect(status().isNotFound());
+        } finally {
+            userRepository.delete(otherTenantStaff);
+            organizationRepository.delete(orgB);
+        }
+    }
+
+    @Test
     void clinicAdmin_cannotDeactivateOwnAccount() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         mockMvc.perform(delete("/users/" + clinicAdmin.getId()).header("Authorization", "Bearer " + token))
                 .andExpect(status().isBadRequest());
@@ -202,7 +243,7 @@ class UserControllerTest {
     void deactivate_returnsNotFound_forUserInAnotherTenant() throws Exception {
         Organization orgB = organizationRepository.save(newOrganization("Other Clinic", "test-users-b"));
         User otherTenantStaff = userRepository.save(newUser(orgB.getId(), "staffB@test.com", Role.DOCTOR));
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         try {
             mockMvc.perform(delete("/users/" + otherTenantStaff.getId()).header("Authorization", "Bearer " + token))
@@ -215,7 +256,7 @@ class UserControllerTest {
 
     @Test
     void changeRole_updatesTheStaffMembersRole() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         mockMvc.perform(put("/users/" + doctor.getId() + "/role")
                         .header("Authorization", "Bearer " + token)
@@ -231,7 +272,7 @@ class UserControllerTest {
 
     @Test
     void changeRole_rejectsDisallowedRole() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         mockMvc.perform(put("/users/" + doctor.getId() + "/role")
                         .header("Authorization", "Bearer " + token)
@@ -244,7 +285,7 @@ class UserControllerTest {
 
     @Test
     void changeRole_cannotChangeOwnRole() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         mockMvc.perform(put("/users/" + clinicAdmin.getId() + "/role")
                         .header("Authorization", "Bearer " + token)
@@ -257,7 +298,7 @@ class UserControllerTest {
 
     @Test
     void adminResetsPassword_thenLoginUsesTheNewPasswordOnly() throws Exception {
-        String token = login("test-users-a", "admin@test.com");
+        String token = login("admin@test.com");
 
         mockMvc.perform(put("/users/" + doctor.getId() + "/password")
                         .header("Authorization", "Bearer " + token)
@@ -284,7 +325,7 @@ class UserControllerTest {
 
     @Test
     void selfServicePasswordChange_rejectsWrongCurrentPassword() throws Exception {
-        String token = login("test-users-a", "doctor@test.com");
+        String token = login("doctor@test.com");
 
         mockMvc.perform(put("/users/me/password")
                         .header("Authorization", "Bearer " + token)
@@ -297,7 +338,7 @@ class UserControllerTest {
 
     @Test
     void selfServicePasswordChange_anyStaffRoleCanChangeTheirOwnPassword() throws Exception {
-        String token = login("test-users-a", "doctor@test.com");
+        String token = login("doctor@test.com");
 
         mockMvc.perform(put("/users/me/password")
                         .header("Authorization", "Bearer " + token)
@@ -315,10 +356,10 @@ class UserControllerTest {
                 .andExpect(status().isOk());
     }
 
-    private String login(String orgSlug, String email) throws Exception {
+    private String login(String email) throws Exception {
         String body = """
                 {"orgSlug":"%s","email":"%s","password":"%s"}
-                """.formatted(orgSlug, email, PASSWORD);
+                """.formatted("test-users-a", email, PASSWORD);
 
         String response = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

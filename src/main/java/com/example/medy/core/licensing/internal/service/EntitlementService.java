@@ -62,7 +62,7 @@ public class EntitlementService {
 
     private void requireTenant(UUID tenantId) {
         if (!organizationRepository.existsById(tenantId)) {
-            throw new ResourceNotFoundException("Organization " + tenantId + " not found");
+            throw new ResourceNotFoundException(EntitlementMessages.ORGANIZATION_NOT_FOUND.formatted(tenantId));
         }
     }
 

@@ -50,6 +50,12 @@ class UserController {
         userService.deactivate(id, caller.userId());
     }
 
+    @PutMapping("/{id}/reactivate")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    void reactivate(@PathVariable UUID id) {
+        userService.reactivate(id);
+    }
+
     @PutMapping("/{id}/role")
     UserResponseDTO changeRole(
             @PathVariable UUID id,

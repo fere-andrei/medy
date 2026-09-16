@@ -44,7 +44,7 @@ public class AuthService {
         User authenticated = user
                 .filter(User::isActive)
                 .filter(u -> passwordEncoder.matches(request.password(), u.getPasswordHash()))
-                .orElseThrow(() -> new AuthenticationFailedException("Invalid credentials"));
+                .orElseThrow(() -> new AuthenticationFailedException(SecurityMessages.INVALID_CREDENTIALS));
 
         return new LoginResponseDTO(jwtService.issueToken(authenticated));
     }

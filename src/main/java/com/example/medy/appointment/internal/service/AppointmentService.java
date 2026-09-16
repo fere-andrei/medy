@@ -70,7 +70,7 @@ public class AppointmentService {
 
     private void validateTimeRange(AppointmentRequestDTO request) {
         if (!request.startTime().isBefore(request.endTime())) {
-            throw new InvalidRequestException("startTime must be before endTime");
+            throw new InvalidRequestException(AppointmentMessages.INVALID_TIME_RANGE);
         }
     }
 
@@ -81,12 +81,12 @@ public class AppointmentService {
         boolean conflict = appointmentRepository.hasConflict(
                 request.doctorId(), request.startTime(), request.endTime(), ACTIVE_STATUSES, excludeAppointmentId);
         if (conflict) {
-            throw new ResourceConflictException("Doctor already has an overlapping appointment");
+            throw new ResourceConflictException(AppointmentMessages.DOCTOR_SCHEDULE_CONFLICT);
         }
     }
 
     private Appointment findAppointmentOrThrow(UUID id) {
         return appointmentRepository.findById(id)
-                .orElseThrow(() -> new ResourceNotFoundException("Appointment %s not found".formatted(id)));
+                .orElseThrow(() -> new ResourceNotFoundException(AppointmentMessages.APPOINTMENT_NOT_FOUND.formatted(id)));
     }
 }
