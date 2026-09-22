@@ -11,5 +11,6 @@ public interface UserMapper {
     @Mapping(target = "id", ignore = true)
     @Mapping(target = "tenantId", ignore = true)
     @Mapping(target = "passwordHash", ignore = true)
+    @Mapping(target = "active", ignore = true)
     User toEntity(RegisterStaffRequestDTO request);
 }

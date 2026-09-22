@@ -151,6 +151,56 @@ class UserControllerTest {
     }
 
     @Test
+    void summary_reportsAccurateCountsPerRole() throws Exception {
+        User receptionist = userRepository.save(newUser(orgA.getId(), "reception@test.com", Role.RECEPTIONIST));
+        String token = login("admin@test.com");
+
+        try {
+            mockMvc.perform(get("/users/summary").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.userSummary.CLINIC_ADMIN").value(1))
+                    .andExpect(jsonPath("$.userSummary.DOCTOR").value(1))
+                    .andExpect(jsonPath("$.userSummary.RECEPTIONIST").value(1));
+        } finally {
+            userRepository.delete(receptionist);
+        }
+    }
+
+    @Test
+    void summary_omitsRolesWithNoStaff() throws Exception {
+        String token = login("admin@test.com");
+
+        mockMvc.perform(get("/users/summary").header("Authorization", "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userSummary.ACCOUNTANT").doesNotExist())
+                .andExpect(jsonPath("$.userSummary.SUPER_ADMIN").doesNotExist());
+    }
+
+    @Test
+    void summary_excludesStaffFromAnotherTenant() throws Exception {
+        Organization orgB = organizationRepository.save(newOrganization("Other Clinic", "test-users-summary-b"));
+        User otherTenantDoctor = userRepository.save(newUser(orgB.getId(), "staffD@test.com", Role.DOCTOR));
+        String token = login("admin@test.com");
+
+        try {
+            mockMvc.perform(get("/users/summary").header("Authorization", "Bearer " + token))
+                    .andExpect(status().isOk())
+                    .andExpect(jsonPath("$.userSummary.DOCTOR").value(1));
+        } finally {
+            userRepository.delete(otherTenantDoctor);
+            organizationRepository.delete(orgB);
+        }
+    }
+
+    @Test
+    void summary_isDeniedForNonAdminStaff() throws Exception {
+        String token = login("doctor@test.com");
+
+        mockMvc.perform(get("/users/summary").header("Authorization", "Bearer " + token))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void deactivatedUsersToken_stopsWorkingImmediately_evenThoughUnexpired() throws Exception {
         String doctorToken = login("doctor@test.com");
         String adminToken = login("admin@test.com");
