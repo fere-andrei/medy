@@ -31,10 +31,7 @@ class EntitlementController {
     }
 
     @PutMapping("/{moduleCode}")
-    EntitlementResponseDTO set(
-            @PathVariable UUID tenantId,
-            @PathVariable ModuleCode moduleCode,
-            @Valid @RequestBody EntitlementRequestDTO request) {
+    EntitlementResponseDTO set(@PathVariable UUID tenantId, @PathVariable ModuleCode moduleCode, @Valid @RequestBody EntitlementRequestDTO request) {
         return entitlementService.set(tenantId, moduleCode, request);
     }
 }

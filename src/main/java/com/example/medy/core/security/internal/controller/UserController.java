@@ -1,10 +1,6 @@
 package com.example.medy.core.security.internal.controller;
 
-import com.example.medy.core.security.internal.dto.AdminPasswordResetRequestDTO;
-import com.example.medy.core.security.internal.dto.ChangeOwnPasswordRequestDTO;
-import com.example.medy.core.security.internal.dto.ChangeRoleRequestDTO;
-import com.example.medy.core.security.internal.dto.RegisterStaffRequestDTO;
-import com.example.medy.core.security.internal.dto.UserResponseDTO;
+import com.example.medy.core.security.internal.dto.*;
 import com.example.medy.core.security.internal.jwt.JwtPrincipal;
 import com.example.medy.core.security.internal.service.UserService;
 import jakarta.validation.Valid;
@@ -42,6 +38,12 @@ class UserController {
     @GetMapping
     List<UserResponseDTO> list() {
         return userService.list();
+    }
+
+    @GetMapping("/summary")
+    @ResponseStatus(HttpStatus.OK)
+    UserSummaryResponseDTO summary() {
+        return userService.getSummary();
     }
 
     @DeleteMapping("/{id}")

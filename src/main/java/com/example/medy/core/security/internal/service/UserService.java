@@ -1,14 +1,11 @@
 package com.example.medy.core.security.internal.service;
 
-import com.example.medy.core.security.internal.dto.AdminPasswordResetRequestDTO;
-import com.example.medy.core.security.internal.dto.ChangeOwnPasswordRequestDTO;
-import com.example.medy.core.security.internal.dto.ChangeRoleRequestDTO;
-import com.example.medy.core.security.internal.dto.RegisterStaffRequestDTO;
-import com.example.medy.core.security.internal.dto.UserResponseDTO;
+import com.example.medy.core.security.internal.dto.*;
 import com.example.medy.core.security.internal.entity.User;
 import com.example.medy.core.security.internal.enums.Role;
 import com.example.medy.core.security.internal.mapper.UserMapper;
 import com.example.medy.core.security.internal.repository.UserRepository;
+import com.example.medy.core.security.internal.repository.projection.RoleCount;
 import com.example.medy.core.tenancy.TenantContext;
 import com.example.medy.core.web.AuthenticationFailedException;
 import com.example.medy.core.web.ForbiddenOperationException;
@@ -21,6 +18,7 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 /**
  * Owns creation of staff {@code User} accounts, invited by a
@@ -69,6 +67,15 @@ public class UserService {
     public List<UserResponseDTO> list() {
         UUID tenantId = TenantContext.getCurrentTenant();
         return userRepository.findAllByTenantId(tenantId).stream().map(UserResponseDTO::from).toList();
+    }
+
+
+    public UserSummaryResponseDTO getSummary() {
+        UUID tenantId = TenantContext.getCurrentTenant();
+        return new UserSummaryResponseDTO(
+                userRepository.countByTenantIdGroupedByRole(tenantId).stream()
+                        .collect(Collectors.toMap(RoleCount::getRole, RoleCount::getCount))
+        );
     }
 
     public void deactivate(UUID targetUserId, UUID callerUserId) {
